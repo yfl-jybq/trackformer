@@ -18,6 +18,10 @@ from trackformer.models.tracker import Tracker
 from trackformer.util.misc import nested_dict_to_namespace
 from trackformer.util.track_utils import (evaluate_mot_accums, get_mot_accum,
                                           interpolate_tracks, plot_sequence)
+from trackformer.datasets.coco import make_coco_transforms
+from trackformer.datasets.transforms import Compose
+from PIL import Image
+import cv2
 
 mm.lap.default_solver = 'lap'
 
@@ -27,8 +31,8 @@ ex.add_named_config('reid', 'cfgs/track_reid.yaml')
 
 
 @ex.automain
-def main(seed, dataset_name, obj_detect_checkpoint_file, tracker_cfg,
-         write_images, output_dir, interpolate, verbose, load_results_dir,
+def main(seed, dataset_name,obj_detect_checkpoint_file, tracker_cfg,input_name,
+         write_images, output_dir, output_name,interpolate, verbose, load_results_dir,
          data_root_dir, generate_attention_maps, frame_range,
          _config, _log, _run, obj_detector_model=None):
     if write_images:
@@ -124,13 +128,37 @@ def main(seed, dataset_name, obj_detect_checkpoint_file, tracker_cfg,
 
         results = seq.load_results(load_results_dir)
 
+        cap = cv2.VideoCapture(input_name)
         if not results:
             start = time.time()
-
-            for frame_id, frame_data in enumerate(tqdm.tqdm(seq_loader, file=sys.stdout)):
+            #for frame_id, frame_data in enumerate(tqdm.tqdm(seq_loader, file=sys.stdout)):
+            #    if frame_id == 1:
+            #        print(frame_data['orig_size'])
+                #print(frame_data['img'].size())
+                #with torch.no_grad():
+                #    tracker.step(frame_data)
+            
+            while True:
+                _, im = cap.read()
+                if im is None:
+                    break
+                im = Image.fromarray(cv2.cvtColor(im, cv2.COLOR_BGR2RGB)).convert("RGB")
+                width_orig, height_orig = im.size
+                self_transforms = Compose(make_coco_transforms('val', img_transform, overflow_boxes=True))
+                img, _ = self_transforms(im)
+                sample = {}
+                sample['img'] = img.unsqueeze(0)
+                sample['img_path'] = ['data/test2/000002.png']
+                sample['dets'] = torch.tensor([]).unsqueeze(0)
+                sample['orig_size'] = torch.as_tensor([int(height_orig), int(width_orig)]).unsqueeze(0)
+                width, height = img.size(2), img.size(1)
+                sample['size'] = torch.as_tensor([int(height), int(width)]).unsqueeze(0)
+                #print(sample['orig_size'])
+                #print(sample['img'].size())
                 with torch.no_grad():
-                    tracker.step(frame_data)
-
+                    tracker.step(sample)
+            cap.release()
+            print("done")
             results = tracker.get_results()
 
             time_total += time.time() - start
@@ -183,7 +211,7 @@ def main(seed, dataset_name, obj_detect_checkpoint_file, tracker_cfg,
         if output_dir is not None and write_images:
             _log.info("PLOT SEQ")
             plot_sequence(
-                results, seq_loader, osp.join(output_dir, dataset_name, str(seq)),
+                results, seq_loader, osp.join(output_dir,dataset_name, str(seq)),output_name,input_name,
                 write_images, generate_attention_maps)
 
     if time_total:
