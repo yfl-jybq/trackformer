@@ -123,7 +123,7 @@ def rand_cmap(nlabels, type='bright', first_color_black=True, last_color_black=F
     return random_colormap
 
 
-def plot_sequence(tracks, data_loader, output_dir, write_images, generate_attention_maps):
+def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,write_images, generate_attention_maps):
     """Plots a whole sequence
 
     Args:
@@ -156,18 +156,28 @@ def plot_sequence(tracks, data_loader, output_dir, write_images, generate_attent
     #         for track_id, maps in attention_maps_per_track.items()}
 
         # _, attention_maps_bin_edges = np.histogram(all_attention_maps, bins=2)
+    ids_pass = []
+    ids_in = []
+    id_dict = {}
+    thre = 400
+    videoWriter = None
+    frame_id = 1
+    cap = cv2.VideoCapture(input_name)
+    while True:
+        _, img = cap.read()
+        if img is None:
+            break
+    #for frame_id, frame_data  in enumerate(tqdm.tqdm(data_loader)):
+        #img_path = frame_data['img_path'][0]
+        #img = cv2.imread(img_path)
 
-    for frame_id, frame_data  in enumerate(tqdm.tqdm(data_loader)):
-        img_path = frame_data['img_path'][0]
-        img = cv2.imread(img_path)[:, :, (2, 1, 0)]
-        height, width, _ = img.shape
-
-        fig = plt.figure()
-        fig.set_size_inches(width / 96, height / 96)
-        ax = plt.Axes(fig, [0., 0., 1., 1.])
-        ax.set_axis_off()
-        fig.add_axes(ax)
-        ax.imshow(img)
+        #过店框
+        poly1_pts = np.array([[1007,711],[492,1076],[2189,1274],[2239,752]],dtype=np.int32)
+        #进店框
+        poly2_pts = np.array([[1292,334],[1279,689],[1932,709],[1942,345]],dtype=np.int32)
+        cv2.polylines(img, np.int32([poly1_pts]), True,(0,0,255),thickness=3)
+        cv2.polylines(img, np.int32([poly2_pts]), True,(0,255,0),thickness=3)
+        tl = round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1  # line/font thickness
 
         if generate_attention_maps:
             attention_map_img = np.zeros((height, width, 4))
@@ -175,32 +185,31 @@ def plot_sequence(tracks, data_loader, output_dir, write_images, generate_attent
         for track_id, track_data in tracks.items():
             if frame_id in track_data.keys():
                 bbox = track_data[frame_id]['bbox']
+#判断框                 
+                x1,y1,x2,y2 = int(bbox[0]),int(bbox[1]),int(bbox[2]),int(bbox[3])
+                id_dict[track_id] = [min([id_dict.get(track_id,[float(np.inf),-float(np.inf)])[0],x1,x2]),max([id_dict.get(track_id,[float(np.inf),-float(np.inf)])[1],x1,x2])]
+                c1, c2 = (x1, y1), (x2, y2)
+                poly_pts = np.array([[x1,y1],[y1,x2],[x2,y2],[y2,x1]],dtype=np.float32)
+                result = cv2.intersectConvexConvex(poly_pts,poly1_pts)
+                if result[0]>20 and y1 <= max(poly1_pts[:,1]) and y2 <= max(poly1_pts[:,1]):     
+                    ids_pass.append(track_id)
+                    cv2.rectangle(img, c1, c2,(0,0,255) , thickness=tl, lineType=cv2.LINE_AA)
+                    tf = max(tl - 1, 1)  # font thickness
+                    t_size = cv2.getTextSize('person', 0, fontScale=tl / 3, thickness=tf)[0]
+                    c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
+                    cv2.rectangle(img, c1, c2, (0,0,255), -1, cv2.LINE_AA)  # filled
+                    cv2.putText(img, '{} ID-{}'.format('person', track_id), (c1[0], c1[1] - 2), 0, tl / 3,
+                    [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
 
-                if 'mask' in track_data[frame_id]:
-                    mask = track_data[frame_id]['mask']
-                    mask = np.ma.masked_where(mask == 0.0, mask)
-
-                    ax.imshow(mask, alpha=0.5, cmap=colors.ListedColormap([cmap(track_id)]))
-
-                    annotate_color = 'white'
-                else:
-                    ax.add_patch(
-                        plt.Rectangle(
-                            (bbox[0], bbox[1]),
-                            bbox[2] - bbox[0],
-                            bbox[3] - bbox[1],
-                            fill=False,
-                            linewidth=2.0,
-                            color=cmap(track_id),
-                        ))
-
-                    annotate_color = cmap(track_id)
-
-                if write_images == 'debug':
-                    ax.annotate(
-                        f"{track_id} - {track_data[frame_id]['obj_ind']} ({track_data[frame_id]['score']:.2f})",
-                        (bbox[0] + (bbox[2] - bbox[0]) / 2.0, bbox[1] + (bbox[3] - bbox[1]) / 2.0),
-                        color=annotate_color, weight='bold', fontsize=12, ha='center', va='center')
+                if y1 <= max(poly2_pts[:,1]) and y2 <= max(poly2_pts[:,1]) and x1>= min(poly2_pts[:,0]) and x1<=max(poly2_pts[:,0]) and x2>= min(poly2_pts[:,0]) and x2<=max(poly2_pts[:,0]):
+                    ids_in.append(track_id)
+                    cv2.rectangle(img, c1, c2,(0,255,0) , thickness=tl, lineType=cv2.LINE_AA)
+                    tf = max(tl - 1, 1)  # font thickness
+                    t_size = cv2.getTextSize('person', 0, fontScale=tl / 3, thickness=tf)[0]
+                    c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
+                    cv2.rectangle(img, c1, c2, (0,255,0) , -1, cv2.LINE_AA)  # filled
+                    cv2.putText(img, '{} ID-{}'.format('person', track_id), (c1[0], c1[1] - 2), 0, tl / 3,
+                    [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
 
                 if 'attention_map' in track_data[frame_id]:
                     attention_map = track_data[frame_id]['attention_map']
@@ -225,17 +234,37 @@ def plot_sequence(tracks, data_loader, output_dir, write_images, generate_attent
 
                     # attention_map_img[:, :] += (np.tile(attention_map[..., np.newaxis], (1,1,4)) / attention_map.max()) * cmap(track_id)
                     # attention_map_img[:, :, 3] = 0.75
-
         if generate_attention_maps:
             ax.imshow(attention_map_img, vmin=0.0, vmax=1.0)
+    
+        if videoWriter is None:
+                fourcc = cv2.VideoWriter_fourcc(
+                    'm', 'p', '4', 'v')  # opencv3.0
+                videoWriter = cv2.VideoWriter(
+                    output_name, fourcc, 15, (img.shape[1], img.shape[0]))
+        #cv2.putText(img, 'id_pass:{} id_in:{}'.format(len(list(set(ids_pass)-set(ids_in))), int(len(set(ids_in))/2)), (0, 0), 0, tl / 3,
+        #            [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+        videoWriter.write(img)
+        frame_id = frame_id+1
+    videoWriter.release()
+    cv2.destroyAllWindows()
+    ids_pass_true = []
+    ids_in_true = []
+    ids_pass_false = []
+    for data in list(set(ids_pass)):
+        if id_dict[data][1]-id_dict[data][0]>thre:
+            ids_pass_true.append(data)
+        else:
+            ids_pass_false.append(data)
+    for data in list(set(ids_in)):
+        if id_dict[data][1]-id_dict[data][0]>thre:
+            ids_in_true.append(data)
+    print("id_pass:",len(list(set(ids_pass_true)-set(ids_in_true))))
+    print("id_in:",int(len(set(ids_in_true))/2))
+    with open("result.txt", "a") as f:
+        f.writelines("id_pass:"+str(len(list(set(ids_pass_true)-set(ids_in_true)))+int(len(set(ids_in_true))/2))+"id_in:"+str(int(len(set(ids_in_true))/2))+'\n'+'ids_pass_false:' + str(ids_pass_false))
 
-        plt.axis('off')
-        # plt.tight_layout()
-        plt.draw()
-        plt.savefig(osp.join(output_dir, osp.basename(img_path)), dpi=96)
-        plt.close()
-
-
+66
 def interpolate_tracks(tracks):
     for i, track in tracks.items():
         frames = []
