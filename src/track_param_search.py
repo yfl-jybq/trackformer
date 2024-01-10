@@ -55,7 +55,7 @@ if __name__ == "__main__":
     tracker_param_grids = {
         # 'detection_obj_score_thresh': [0.3, 0.4, 0.5, 0.6],
         # 'track_obj_score_thresh': [0.3, 0.4, 0.5, 0.6],
-        'detection_obj_score_thresh': [0.4],
+        'detection_obj_score_thresh': [0.6],
         'track_obj_score_thresh': [0.4],
         # 'detection_nms_thresh': [0.95, 0.9, 0.0],
         # 'track_nms_thresh': [0.95, 0.9, 0.0],
