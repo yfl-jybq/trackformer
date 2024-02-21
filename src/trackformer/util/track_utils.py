@@ -123,7 +123,7 @@ def rand_cmap(nlabels, type='bright', first_color_black=True, last_color_black=F
     return random_colormap
 
 
-def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,write_images, generate_attention_maps):
+def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,poly_pass,poly_in,write_images, generate_attention_maps):
     """Plots a whole sequence
 
     Args:
@@ -172,9 +172,15 @@ def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,write_i
         #img = cv2.imread(img_path)
 
         #过店框
-        poly1_pts = np.array([[240.0,713.1250000000001],[221.25,531.875],[640.0,498.54166666666663],[1242.0833333333333,527.7083333333334],[1276.678634751773,719.0]],dtype=np.int32)
+        entrance = []
+        for i in range(0, len(poly_pass), 2):
+            entrance.append([poly_pass[i], poly_pass[i + 1]])
+            poly1_pts=np.array(entrance,dtype=np.int32)
         #进店框
-        poly2_pts = np.array([[1292,334],[1279,689],[1932,709],[1942,345]],dtype=np.int32)
+        entrance = []
+        for i in range(0, len(poly_in), 2):
+            entrance.append([poly_in[i], poly_in[i + 1]])
+            poly2_pts=np.array(entrance,dtype=np.int32)
         cv2.polylines(img, np.int32([poly1_pts]), True,(0,0,255),thickness=3)
         cv2.polylines(img, np.int32([poly2_pts]), True,(0,255,0),thickness=3)
         tl = round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1  # line/font thickness
@@ -261,9 +267,10 @@ def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,write_i
             ids_in_true.append(data)
     print("id_pass:",len(list(set(ids_pass_true)-set(ids_in_true))))
     print("id_in:",int(len(set(ids_in_true))/2))
+    '''
     with open("result.txt", "a") as f:
         f.writelines("id_pass:"+str(len(list(set(ids_pass_true)-set(ids_in_true)))+int(len(set(ids_in_true))/2))+"id_in:"+str(int(len(set(ids_in_true))/2))+'\n'+'ids_pass_false:' + str(ids_pass_false))
-
+    '''
 66
 def interpolate_tracks(tracks):
     for i, track in tracks.items():
