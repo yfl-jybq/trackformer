@@ -172,7 +172,7 @@ def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,write_i
         #img = cv2.imread(img_path)
 
         #过店框
-        poly1_pts = np.array([[1007,711],[492,1076],[2189,1274],[2239,752]],dtype=np.int32)
+        poly1_pts = np.array([[240.0,713.1250000000001],[221.25,531.875],[640.0,498.54166666666663],[1242.0833333333333,527.7083333333334],[1276.678634751773,719.0]],dtype=np.int32)
         #进店框
         poly2_pts = np.array([[1292,334],[1279,689],[1932,709],[1942,345]],dtype=np.int32)
         cv2.polylines(img, np.int32([poly1_pts]), True,(0,0,255),thickness=3)
