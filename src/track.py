@@ -32,12 +32,12 @@ ex.add_named_config('reid', 'cfgs/track_reid.yaml')
 
 @ex.automain
 def main(seed, dataset_name,obj_detect_checkpoint_file, tracker_cfg,input_name,
-         write_images, output_dir, output_name,interpolate, verbose, load_results_dir,
+         write_images, output_dir, output_name,poly_pass,interpolate, verbose, load_results_dir,
          data_root_dir, generate_attention_maps, frame_range,
-         _config, _log, _run, obj_detector_model=None):
+         _config, _log, _run, poly_in= [0,1,1,1,1,0,0,0],obj_detector_model=None):
     if write_images:
         assert output_dir is not None
-
+    
     # obj_detector_model is only provided when run as evaluation during
     # training. in that case we omit verbose outputs.
     if obj_detector_model is None:
@@ -117,6 +117,8 @@ def main(seed, dataset_name,obj_detect_checkpoint_file, tracker_cfg,input_name,
 
         _log.info(f"------------------")
         _log.info(f"TRACK SEQ: {seq}")
+
+        _log.info(f"poly_pass: {poly_pass}")
 
         start_frame = int(frame_range['start'] * len(seq))
         end_frame = int(frame_range['end'] * len(seq))
@@ -211,7 +213,7 @@ def main(seed, dataset_name,obj_detect_checkpoint_file, tracker_cfg,input_name,
         if output_dir is not None and write_images:
             _log.info("PLOT SEQ")
             plot_sequence(
-                results, seq_loader, osp.join(output_dir,dataset_name, str(seq)),output_name,input_name,
+                results, seq_loader, osp.join(output_dir,dataset_name, str(seq)),output_name,input_name,poly_pass,poly_in,
                 write_images, generate_attention_maps)
 
     if time_total:
