@@ -22,12 +22,26 @@ from trackformer.datasets.coco import make_coco_transforms
 from trackformer.datasets.transforms import Compose
 from PIL import Image
 import cv2
+import json
 
 mm.lap.default_solver = 'lap'
 
 ex = sacred.Experiment('track')
 ex.add_config('cfgs/track.yaml')
 ex.add_named_config('reid', 'cfgs/track_reid.yaml')
+
+class MyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, time):
+            return obj.__str__()
+        else:
+            return super(NpEncoder, self).default(obj)
 
 
 @ex.automain
@@ -171,9 +185,9 @@ def main(seed, dataset_name,obj_detect_checkpoint_file, tracker_cfg,input_name,
             if interpolate:
                 results = interpolate_tracks(results)
 
-            if output_dir is not None:
-                _log.info(f"WRITE RESULTS")
-                seq.write_results(results, output_dir)
+            filename = 'data_27.json'
+            with open(filename, 'w') as file:
+                json.dump(results, file,cls=MyEncoder)
         else:
             _log.info("LOAD RESULTS")
 
