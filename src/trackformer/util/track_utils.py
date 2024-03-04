@@ -143,6 +143,7 @@ def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,poly_pa
     mx = 0
     for track_id, track_data in tracks.items():
         mx = max(mx, track_id)
+
     cmap = rand_cmap(mx, type='bright', first_color_black=False, last_color_black=False)
 
     # if generate_attention_maps:
@@ -184,20 +185,20 @@ def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,poly_pa
         cv2.polylines(img, np.int32([poly1_pts]), True,(0,0,255),thickness=3)
         cv2.polylines(img, np.int32([poly2_pts]), True,(0,255,0),thickness=3)
         tl = round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1  # line/font thickness
-
         if generate_attention_maps:
             attention_map_img = np.zeros((height, width, 4))
 
         for track_id, track_data in tracks.items():
             if frame_id in track_data.keys():
                 bbox = track_data[frame_id]['bbox']
-#判断框                 
+#判断框          
                 x1,y1,x2,y2 = int(bbox[0]),int(bbox[1]),int(bbox[2]),int(bbox[3])
                 id_dict[track_id] = [min([id_dict.get(track_id,[float(np.inf),-float(np.inf)])[0],x1,x2]),max([id_dict.get(track_id,[float(np.inf),-float(np.inf)])[1],x1,x2])]
                 c1, c2 = (x1, y1), (x2, y2)
-                poly_pts = np.array([[x1,y1],[y1,x2],[x2,y2],[y2,x1]],dtype=np.float32)
+                cv2.rectangle(img, c1, c2,(255,0,0) , thickness=tl, lineType=cv2.LINE_AA)
+                poly_pts = np.array([[x1,y1],[x1,y2],[x2,y2],[x2,y1]],dtype=np.float32)
                 result = cv2.intersectConvexConvex(poly_pts,poly1_pts)
-                if result[0]>20 and y1 <= max(poly1_pts[:,1]) and y2 <= max(poly1_pts[:,1]):     
+                if result[0]>20 and y1 <= max(poly1_pts[:,1]) and y2 <= max(poly1_pts[:,1]):  
                     ids_pass.append(track_id)
                     cv2.rectangle(img, c1, c2,(0,0,255) , thickness=tl, lineType=cv2.LINE_AA)
                     tf = max(tl - 1, 1)  # font thickness
@@ -205,7 +206,7 @@ def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,poly_pa
                     c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
                     cv2.rectangle(img, c1, c2, (0,0,255), -1, cv2.LINE_AA)  # filled
                     cv2.putText(img, '{} ID-{}'.format('person', track_id), (c1[0], c1[1] - 2), 0, tl / 3,
-                    [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+                    [0, 0, 255], thickness=tf, lineType=cv2.LINE_AA)
 
                 if y1 <= max(poly2_pts[:,1]) and y2 <= max(poly2_pts[:,1]) and x1>= min(poly2_pts[:,0]) and x1<=max(poly2_pts[:,0]) and x2>= min(poly2_pts[:,0]) and x2<=max(poly2_pts[:,0]):
                     ids_in.append(track_id)
@@ -265,13 +266,12 @@ def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,poly_pa
     for data in list(set(ids_in)):
         if id_dict[data][1]-id_dict[data][0]>thre:
             ids_in_true.append(data)
-    print("id_pass:",len(list(set(ids_pass_true)-set(ids_in_true))))
+    print("id_pass:",len(list(set(ids_pass_true)-set(ids_in_true)))+int(len(set(ids_in_true))/2))
     print("id_in:",int(len(set(ids_in_true))/2))
-    '''
-    with open("result.txt", "a") as f:
-        f.writelines("id_pass:"+str(len(list(set(ids_pass_true)-set(ids_in_true)))+int(len(set(ids_in_true))/2))+"id_in:"+str(int(len(set(ids_in_true))/2))+'\n'+'ids_pass_false:' + str(ids_pass_false))
-    '''
-66
+    return len(list(set(ids_pass_true)-set(ids_in_true)))+int(len(set(ids_in_true))/2),int(len(set(ids_in_true))/2)
+#    with open("result.txt", "a") as f:
+#        f.writelines("id_pass:"+str(len(list(set(ids_pass_true)-set(ids_in_true)))+int(len(set(ids_in_true))/2))+"id_in:"+str(int(len(set(ids_in_true))/2))+'\n'+'ids_pass_false:' + str(ids_pass_false))
+
 def interpolate_tracks(tracks):
     for i, track in tracks.items():
         frames = []
