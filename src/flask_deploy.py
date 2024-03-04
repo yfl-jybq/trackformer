@@ -27,6 +27,9 @@ from trackformer.datasets.transforms import Compose
 from PIL import Image
 import cv2
 import yaml
+import wget
+from datetime import datetime
+import re
 
 
 
@@ -113,14 +116,33 @@ def main(seed, dataset_name,obj_detect_checkpoint_file,tracker_cfg,
     # 定义API路由
     @app.route('/predict', methods=['POST'])
     def predict():
-        image_url = request.form.get('image_url')
-        poly_pass = request.form.get('poly_pass').split(",")
-        os.system('wget'+' '+image_url+' -O test.mp4')
-        input_name = 'test.mp4'
-        output_name = request.form.get('output_name')
-
-        if request.form.get('poly_in')!='':
-            poly_in = request.form.get('poly_in').split(",")
+        
+        try:
+            image_url = request.form.get('video_url')
+            poly_pass = re.split(",|\|",request.form.get('bboxes'))
+            _log.info(poly_pass)
+            if request.form.get('door')!='':
+                poly_in = re.split(",|\|",request.form.get('door'))
+            _log.info(poly_in)
+            date1 = request.form.get('video_start_time')
+            date2 = request.form.get('video_end_time')
+            d1 = datetime.strptime(date1, "%Y-%m-%d %H:%M:%S")
+            d2 = datetime.strptime(date2, "%Y-%m-%d %H:%M:%S")
+            project_code = request.form.get('project_code')
+            output_name = request.form.get('output_name')
+        except Exception as e:
+            return jsonify({"r": 50007,"type": "failed","message": "wrong input parameter"})
+        
+        input_name = 'test'+project_code+'.mp4'
+        try:
+            wget.download(image_url, out=input_name)
+        except Exception as e:
+            return jsonify({"r": 50002,"type": "failed","message": "wrong vedio url"})
+        
+        delta = d2-d1
+        if delta.total_seconds() / 60>30:
+            os.system('rm -rf '+input_name)
+            return jsonify({"r": 50003,"type": "failed","message": "Video length exceeds 30 minutes"})
 
         if hasattr(obj_detector, 'tracking'):
             obj_detector.tracking()
@@ -255,8 +277,8 @@ def main(seed, dataset_name,obj_detect_checkpoint_file,tracker_cfg,
                 [str(s) for s in dataset if not s.no_gt])
 
             _log.info(f'\n{str_summary}')
-        os.system('rm -rf test.mp4')
+        os.system('rm -rf '+input_name)
         # 返回预测结果
-        return jsonify({'id_pass': id_pass,'id_in':id_in})
+        return jsonify({"r": 200,"type": "success",'video_people_pass_num': id_pass,'video_people_in_num':id_in})
     app.run(debug=False)
     
