@@ -33,10 +33,10 @@ for i in range(13,14):
 '''
 os.system('python src/track.py with \
 dataset_name=DEMO \
-data_root_dir=data/test2 \
-output_dir=data/test \
-output_name=result_0221.mp4 \
-input_name=/home/yfl/Passenger-flow-detection/data/test_0221_seg.mp4 \
+data_root_dir=data \
+output_dir=data \
+output_name=result_34.mp4 \
+input_name=/home/linhui/test_trackformer/trackformer/test_34.mp4 \
 poly_pass=1007,711,492,1076,2189,1274,2239,746 \
 write_images=pretty')
     
