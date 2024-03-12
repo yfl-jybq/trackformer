@@ -160,7 +160,7 @@ def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,poly_pa
     ids_pass = []
     ids_in = []
     id_dict = {}
-    thre = 400
+    thre = 0
     videoWriter = None
     frame_id = 1
     cap = cv2.VideoCapture(input_name)
@@ -185,6 +185,7 @@ def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,poly_pa
         cv2.polylines(img, np.int32([poly1_pts]), True,(0,0,255),thickness=3)
         cv2.polylines(img, np.int32([poly2_pts]), True,(0,255,0),thickness=3)
         tl = round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1  # line/font thickness
+        thre = (max(poly1_pts[:,0])-min(poly1_pts[:,0]))*0.3
         if generate_attention_maps:
             attention_map_img = np.zeros((height, width, 4))
 
@@ -193,7 +194,7 @@ def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,poly_pa
                 bbox = track_data[frame_id]['bbox']
 #判断框          
                 x1,y1,x2,y2 = int(bbox[0]),int(bbox[1]),int(bbox[2]),int(bbox[3])
-                id_dict[track_id] = [min([id_dict.get(track_id,[float(np.inf),-float(np.inf)])[0],x1,x2]),max([id_dict.get(track_id,[float(np.inf),-float(np.inf)])[1],x1,x2])]
+                id_dict[track_id] = id_dict.get(track_id,[])+[(x1+x2)/2]
                 c1, c2 = (x1, y1), (x2, y2)
                 cv2.rectangle(img, c1, c2,(255,0,0) , thickness=tl, lineType=cv2.LINE_AA)
                 poly_pts = np.array([[x1,y1],[x1,y2],[x2,y2],[x2,y1]],dtype=np.float32)
@@ -259,16 +260,16 @@ def plot_sequence(tracks, data_loader, output_dir,output_name,input_name,poly_pa
     ids_in_true = []
     ids_pass_false = []
     for data in list(set(ids_pass)):
-        if id_dict[data][1]-id_dict[data][0]>thre:
+        if max(id_dict[data])-min(id_dict[data])>thre:
             ids_pass_true.append(data)
         else:
             ids_pass_false.append(data)
     for data in list(set(ids_in)):
-        if id_dict[data][1]-id_dict[data][0]>thre:
+        if max(id_dict[data])-min(id_dict[data])>thre:
             ids_in_true.append(data)
-    print("id_pass:",len(list(set(ids_pass_true)-set(ids_in_true)))+int(len(set(ids_in_true))/2))
-    print("id_in:",int(len(set(ids_in_true))/2))
-    return len(list(set(ids_pass_true)-set(ids_in_true)))+int(len(set(ids_in_true))/2),int(len(set(ids_in_true))/2)
+    print("id_pass:",len(list(set(ids_pass_true))))
+    print("id_in:",int(len(set(ids_in_true))))
+    return len(list(set(ids_pass_true))),len(set(ids_in_true))
 #    with open("result.txt", "a") as f:
 #        f.writelines("id_pass:"+str(len(list(set(ids_pass_true)-set(ids_in_true)))+int(len(set(ids_in_true))/2))+"id_in:"+str(int(len(set(ids_in_true))/2))+'\n'+'ids_pass_false:' + str(ids_pass_false))
 

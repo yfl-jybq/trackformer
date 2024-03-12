@@ -30,6 +30,7 @@ import yaml
 import wget
 from datetime import datetime
 import re
+from tqdm import tqdm
 
 
 
@@ -115,8 +116,7 @@ def main(seed, dataset_name,obj_detect_checkpoint_file,tracker_cfg,
 
     # 定义API路由
     @app.route('/predict', methods=['POST'])
-    def predict():
-        
+    def predict():        
         try:
             image_url = request.form.get('video_url')
             poly_pass = re.split(",|\|",request.form.get('bboxes'))
@@ -134,6 +134,8 @@ def main(seed, dataset_name,obj_detect_checkpoint_file,tracker_cfg,
             return jsonify({"r": 50007,"type": "failed","message": "wrong input parameter"})
         
         input_name = 'test'+project_code+'.mp4'
+        if os.path.exists(input_name):
+            os.system('rm -rf '+input_name)
         try:
             wget.download(image_url, out=input_name)
         except Exception as e:
@@ -179,6 +181,7 @@ def main(seed, dataset_name,obj_detect_checkpoint_file,tracker_cfg,
             results = seq.load_results(load_results_dir)
 
             cap = cv2.VideoCapture(input_name)
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             if not results:
                 start = time.time()
                 #for frame_id, frame_data in enumerate(tqdm.tqdm(seq_loader, file=sys.stdout)):
@@ -188,7 +191,7 @@ def main(seed, dataset_name,obj_detect_checkpoint_file,tracker_cfg,
                     #with torch.no_grad():
                     #    tracker.step(frame_data)
                 
-                while True:
+                for frame in tqdm(range(total_frames), desc='Processing video'):
                     _, im = cap.read()
                     if im is None:
                         break
